@@ -50,6 +50,11 @@ const FLOWS = [
 // SVG Flow Arrow Component
 // =============================================================================
 
+// Check if there's a reverse flow (for curve offset)
+const hasReverseFlow = (from, to) => {
+  return FLOWS.some(f => f.from === to && f.to === from)
+}
+
 function FlowArrow({ t, from, to, label, type, isActive, containerSize }) {
   const fromPos = NODE_POSITIONS[from]
   const toPos = NODE_POSITIONS[to]
@@ -61,10 +66,6 @@ function FlowArrow({ t, from, to, label, type, isActive, containerSize }) {
   const y1 = (fromPos.y / 100) * containerSize.height
   const x2 = (toPos.x / 100) * containerSize.width
   const y2 = (toPos.y / 100) * containerSize.height
-
-  // Calculate midpoint for label
-  const midX = (x1 + x2) / 2
-  const midY = (y1 + y2) / 2
 
   // Calculate angle for arrow
   const angle = Math.atan2(y2 - y1, x2 - x1)
@@ -79,17 +80,38 @@ function FlowArrow({ t, from, to, label, type, isActive, containerSize }) {
   const endX = x2 - dx
   const endY = y2 - dy
 
+  // Calculate curve offset for bidirectional flows
+  const isBidirectional = hasReverseFlow(from, to)
+  const curveOffset = isBidirectional ? 35 : 0
+
+  // Perpendicular offset for curve control point
+  const perpX = -Math.sin(angle) * curveOffset
+  const perpY = Math.cos(angle) * curveOffset
+
+  // Midpoint (straight) and control point (curved)
+  const midX = (startX + endX) / 2
+  const midY = (startY + endY) / 2
+  const ctrlX = midX + perpX
+  const ctrlY = midY + perpY
+
+  // Label position (on the curve)
+  const labelX = isBidirectional ? ctrlX : midX
+  const labelY = isBidirectional ? ctrlY : midY
+
   // Flow type colors
   const flowColor = type === 'Product' ? '#50c878' : '#888'
 
+  // Path for curve or line
+  const pathD = isBidirectional
+    ? `M${startX},${startY} Q${ctrlX},${ctrlY} ${endX},${endY}`
+    : `M${startX},${startY} L${endX},${endY}`
+
   return (
     <g style={{ opacity: isActive ? 1 : 0.4 }}>
-      {/* Line */}
-      <line
-        x1={startX}
-        y1={startY}
-        x2={endX}
-        y2={endY}
+      {/* Curved or straight path */}
+      <path
+        d={pathD}
+        fill="none"
         stroke={flowColor}
         strokeWidth={isActive ? 2 : 1}
         strokeDasharray={type === 'Resource' ? '4,4' : 'none'}
@@ -102,15 +124,15 @@ function FlowArrow({ t, from, to, label, type, isActive, containerSize }) {
           <animateMotion
             dur="2s"
             repeatCount="indefinite"
-            path={`M${startX},${startY} L${endX},${endY}`}
+            path={pathD}
           />
         </circle>
       )}
 
       {/* Label background */}
       <rect
-        x={midX - 45}
-        y={midY - 8}
+        x={labelX - 45}
+        y={labelY - 8}
         width={90}
         height={16}
         fill={t.bgSecondary}
@@ -120,8 +142,8 @@ function FlowArrow({ t, from, to, label, type, isActive, containerSize }) {
 
       {/* Label text */}
       <text
-        x={midX}
-        y={midY + 4}
+        x={labelX}
+        y={labelY + 4}
         textAnchor="middle"
         fontSize="10"
         fill={t.textMuted}
