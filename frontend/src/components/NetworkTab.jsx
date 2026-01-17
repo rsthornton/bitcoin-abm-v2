@@ -22,12 +22,16 @@ const ARCHETYPE_COLORS = {
   None: '#888888',       // Gray - rule following
 }
 
-// Node positions (relative to container)
+// Node positions (relative to container) - matches BERT model topology
+// Protocol: center hub
+// Development: top, feeds proposals down
+// Validating: left, receives tx proposals as inputs
+// Mining: right of protocol, exports heat waste + confirmed blocks
 const NODE_POSITIONS = {
-  Mining: { x: 75, y: 25 },
-  Validating: { x: 25, y: 50 },
-  Development: { x: 50, y: 85 },
-  Protocol: { x: 75, y: 60 },
+  Protocol: { x: 50, y: 50 },      // Center hub
+  Development: { x: 50, y: 15 },   // Top, proposals flow down
+  Validating: { x: 15, y: 50 },    // Left, receives external tx inputs
+  Mining: { x: 85, y: 50 },        // Right of protocol, outputs to exterior
 }
 
 // Flow definitions matching bitcoin.json
