@@ -106,10 +106,10 @@ A research-grade Bitcoin network simulation that bridges educational visualizati
 
 ## Hosting Strategy
 
-### Option A: Single Container (Recommended)
+### Architecture: Single Container
 ```
 ┌─────────────────────────────────┐
-│  Docker Container               │
+│  Single Container               │
 │  ┌───────────────────────────┐  │
 │  │  Flask serves:            │  │
 │  │  - /api/* (REST)          │  │
@@ -121,38 +121,50 @@ A research-grade Bitcoin network simulation that bridges educational visualizati
 - Build React → `frontend/dist/`
 - Flask serves static files + API
 - Single port, no CORS issues
-- **Platforms**: Railway, Render, Fly.io, DigitalOcean
 
-### Option B: Split Services
-```
-┌──────────────┐     ┌──────────────┐
-│ Vercel       │ ←── │ Render       │
-│ (React)      │     │ (Flask API)  │
-└──────────────┘     └──────────────┘
-```
-- More complex CORS config
-- Separate scaling
-- WebSocket needs sticky sessions
+### Platform Comparison
 
-### Recommended Path
-1. **Now**: Single container on Railway (free tier, easy)
-2. **Scale**: Move to Fly.io if need WebSocket scaling
-3. **Production**: DigitalOcean App Platform ($5/mo)
+| | Railway | Render | Fly.io |
+|---|---------|--------|--------|
+| **Cold starts** | ❌ None | ⚠️ ~30s after 15min idle | ❌ None |
+| **Free tier** | ~500 hrs/mo ($5 credit) | Unlimited (with cold starts) | ~3 small VMs |
+| **WebSocket** | ✅ Good | ✅ Works | ✅ Excellent |
+| **DX** | ✅ Best | ✅ Simple | ⚠️ More DevOps-y |
+| **Paid tier** | $5/mo | $7/mo | $5/mo |
 
-### Deployment Steps (Option A)
+### Recommended: Railway ⭐
+
+**Why Railway wins for this project:**
+1. **No cold starts** - Demo links load instantly (crucial for sharing in newsletters/meetings)
+2. **Simple DX** - Auto-detects Flask, minimal config
+3. **Good WebSocket support** - Real-time simulation works reliably
+4. **Free tier sufficient** - ~500 hrs/mo is plenty for a demo/portfolio piece
+
+### Deployment Steps
+
 ```bash
-# Build frontend
+# 1. Build frontend
 cd frontend && npm run build
 
-# Move to Flask static
-mv dist ../backend/static
+# 2. Move build to Flask static
+mkdir -p ../backend/static
+cp -r dist/* ../backend/static/
 
-# Update Flask to serve static
+# 3. Update server.py to serve static files
 # app = Flask(__name__, static_folder='static', static_url_path='')
+# Add catch-all route to serve index.html for client-side routing
 
-# Deploy container
-railway up  # or render deploy
+# 4. Deploy to Railway
+cd backend
+railway login
+railway init
+railway up
 ```
+
+### Future Scaling Path
+1. **Now**: Railway free tier (~500 hrs/mo)
+2. **More traffic**: Railway paid ($5/mo, always-on)
+3. **Heavy WebSocket load**: Migrate to Fly.io (edge locations, better WS scaling)
 
 ---
 
