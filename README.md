@@ -46,7 +46,7 @@ See `PLAN.md` for the full block-by-block development plan.
 - [x] Block 4: Frontend Shell
 - [x] Block 5: WebSocket Connection
 - [x] Block 6: Subsystems Tab
-- [ ] Block 7: Network Tab
+- [x] Block 7: Network Tab (DSA Integrated)
 - [ ] Block 8: Analysis Tab
 - [ ] Block 9: Scenarios
 - [ ] Block 10: Polish + Export

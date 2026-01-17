@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSimulation } from './hooks/useSimulation'
 import { SubsystemsTab } from './components/SubsystemsTab'
+import { NetworkTab } from './components/NetworkTab'
 
 /**
  * Bitcoin ABM v2 - Main Application
@@ -299,7 +300,7 @@ function TabBar({ t, activeTab, onTabChange }) {
   )
 }
 
-function MainContent({ t, activeTab, metrics, bertStructure }) {
+function MainContent({ t, activeTab, metrics, bertStructure, simState }) {
   return (
     <div style={{
       flex: 1,
@@ -307,7 +308,7 @@ function MainContent({ t, activeTab, metrics, bertStructure }) {
       overflow: 'auto',
     }}>
       {activeTab === 'Network' && (
-        <PlaceholderTab t={t} title="Network View" description="Flow visualization coming in Block 7" />
+        <NetworkTab t={t} metrics={metrics} bertStructure={bertStructure} simState={simState} />
       )}
       {activeTab === 'Subsystems' && (
         <SubsystemsTab t={t} metrics={metrics} bertStructure={bertStructure} />
@@ -404,7 +405,7 @@ function AboutTab({ t, bertStructure }) {
         fontSize: '0.75rem',
         color: t.textDim,
       }}>
-        Block 6: Subsystems Tab ✓
+        Block 7: Network Tab (DSA Integrated) ✓
       </div>
     </div>
   )
@@ -416,7 +417,7 @@ function AboutTab({ t, bertStructure }) {
 
 export default function App() {
   const [theme, setTheme] = useState('light')
-  const [activeTab, setActiveTab] = useState('Subsystems')
+  const [activeTab, setActiveTab] = useState('Network')
   const [bertStructure, setBertStructure] = useState(null)
 
   // WebSocket-powered simulation state
@@ -481,6 +482,7 @@ export default function App() {
             activeTab={activeTab}
             metrics={metrics}
             bertStructure={bertStructure}
+            simState={simState}
           />
         </main>
       </div>
