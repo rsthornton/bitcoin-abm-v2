@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import { useSimulation } from './hooks/useSimulation'
 
 /**
  * Bitcoin ABM v2 - Main Application
  *
- * Block 4: RSC-inspired layout with sidebar, tabs, and theme.
+ * Block 5: WebSocket connection for real-time updates.
  */
 
 // =============================================================================
@@ -402,7 +403,7 @@ function AboutTab({ t, bertStructure }) {
         fontSize: '0.75rem',
         color: t.textDim,
       }}>
-        Block 4: Frontend Shell ✓
+        Block 5: WebSocket Connection ✓
       </div>
     </div>
   )
@@ -415,19 +416,20 @@ function AboutTab({ t, bertStructure }) {
 export default function App() {
   const [theme, setTheme] = useState('light')
   const [activeTab, setActiveTab] = useState('About')
-  const [simState, setSimState] = useState({ step: 0, running: false })
-  const [metrics, setMetrics] = useState({
-    block_height: 0,
-    hashrate: 100.0,
-    difficulty: 1.0,
-    mempool_size: 0,
-    avg_fee: 1.0,
-    blocks_mined: 0,
-    transactions_processed: 0,
-    bips_proposed: 0,
-  })
   const [bertStructure, setBertStructure] = useState(null)
-  const [error, setError] = useState(null)
+
+  // WebSocket-powered simulation state
+  const {
+    connected,
+    simState,
+    metrics,
+    error,
+    step: handleStep,
+    reset: handleReset,
+    run: handleRun,
+    stop: handleStop,
+    clearError,
+  } = useSimulation()
 
   const t = themes[theme]
 
@@ -442,55 +444,6 @@ export default function App() {
       })
       .catch(err => console.error('Failed to load BERT structure:', err))
   }, [])
-
-  // Simulation controls
-  const handleStep = useCallback(async () => {
-    try {
-      const res = await fetch('/api/step', { method: 'POST' })
-      const data = await res.json()
-      if (data.status === 'ok') {
-        setSimState(prev => ({ ...prev, step: data.state.step }))
-        setMetrics({
-          ...data.state.metrics,
-          ...data.state.activity,
-        })
-      }
-    } catch (err) {
-      setError(err.message)
-    }
-  }, [])
-
-  const handleReset = useCallback(async () => {
-    try {
-      const res = await fetch('/api/reset', { method: 'POST' })
-      const data = await res.json()
-      if (data.status === 'ok') {
-        setSimState({ step: 0, running: false })
-        setMetrics({
-          ...data.state.metrics,
-          ...data.state.activity,
-        })
-      }
-    } catch (err) {
-      setError(err.message)
-    }
-  }, [])
-
-  const handleRun = useCallback(() => {
-    setSimState(prev => ({ ...prev, running: true }))
-  }, [])
-
-  const handleStop = useCallback(() => {
-    setSimState(prev => ({ ...prev, running: false }))
-  }, [])
-
-  // Auto-step when running
-  useEffect(() => {
-    if (!simState.running) return
-
-    const interval = setInterval(handleStep, 200)
-    return () => clearInterval(interval)
-  }, [simState.running, handleStep])
 
   return (
     <div style={{
@@ -531,6 +484,26 @@ export default function App() {
         </main>
       </div>
 
+      {/* Connection status */}
+      <div style={{
+        position: 'fixed',
+        bottom: '1rem',
+        left: '1rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        fontSize: '0.75rem',
+        color: t.textDim,
+      }}>
+        <span style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          background: connected ? t.success : t.error,
+        }} />
+        {connected ? 'WebSocket' : 'Disconnected'}
+      </div>
+
       {error && (
         <div style={{
           position: 'fixed',
@@ -544,7 +517,7 @@ export default function App() {
         }}>
           {error}
           <button
-            onClick={() => setError(null)}
+            onClick={clearError}
             style={{
               marginLeft: '1rem',
               background: 'none',
