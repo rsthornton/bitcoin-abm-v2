@@ -184,7 +184,49 @@ function ControlButton({ t, onClick, active, title, children }) {
   )
 }
 
-function Sidebar({ t, metrics, bertStructure }) {
+function Sidebar({ t, metrics, bertStructure, simState, currentScenario }) {
+  // Export handlers
+  const exportJSON = () => {
+    const data = {
+      exported_at: new Date().toISOString(),
+      scenario: currentScenario,
+      state: {
+        step: simState.step,
+        metrics: metrics,
+      },
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bitcoin-abm-${currentScenario?.id || 'baseline'}-step${simState.step}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportCSV = () => {
+    const headers = ['step', 'block_height', 'hashrate', 'difficulty', 'mempool_size', 'avg_fee', 'blocks_mined', 'transactions_processed', 'bips_proposed']
+    const row = [
+      simState.step,
+      metrics.block_height,
+      metrics.hashrate.toFixed(2),
+      metrics.difficulty.toFixed(4),
+      metrics.mempool_size,
+      metrics.avg_fee.toFixed(2),
+      metrics.blocks_mined,
+      metrics.transactions_processed,
+      metrics.bips_proposed,
+    ]
+    const csv = `${headers.join(',')}\n${row.join(',')}`
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bitcoin-abm-${currentScenario?.id || 'baseline'}-step${simState.step}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <aside style={{
       width: '280px',
@@ -215,7 +257,7 @@ function Sidebar({ t, metrics, bertStructure }) {
 
       {/* BERT Structure Preview */}
       {bertStructure && (
-        <div style={{ padding: '1rem', flex: 1 }}>
+        <div style={{ padding: '1rem', borderBottom: `1px solid ${t.border}`, flex: 1 }}>
           <SectionLabel t={t}>BERT Model</SectionLabel>
           <div style={{ fontSize: '0.75rem', color: t.textMuted, marginBottom: '0.5rem' }}>
             {bertStructure.stats.total_subsystems} subsystems · {bertStructure.stats.total_flows} flows
@@ -225,7 +267,39 @@ function Sidebar({ t, metrics, bertStructure }) {
           ))}
         </div>
       )}
+
+      {/* Export Section */}
+      <div style={{ padding: '1rem' }}>
+        <SectionLabel t={t}>Export</SectionLabel>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <ExportButton t={t} onClick={exportJSON} label="JSON" />
+          <ExportButton t={t} onClick={exportCSV} label="CSV" />
+        </div>
+      </div>
     </aside>
+  )
+}
+
+function ExportButton({ t, onClick, label }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1,
+        padding: '0.5rem',
+        background: t.bgTertiary,
+        border: `1px solid ${t.border}`,
+        borderRadius: '4px',
+        color: t.textMuted,
+        fontSize: '0.75rem',
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+      }}
+      onMouseOver={(e) => e.target.style.borderColor = t.borderHover}
+      onMouseOut={(e) => e.target.style.borderColor = t.border}
+    >
+      {label}
+    </button>
   )
 }
 
@@ -376,20 +450,34 @@ function PlaceholderTab({ t, title, description }) {
 
 function AboutTab({ t, bertStructure }) {
   return (
-    <div style={{ maxWidth: '600px' }}>
-      <h2 style={{ fontSize: '1.25rem', color: t.text, marginBottom: '1rem' }}>
+    <div style={{ maxWidth: '700px' }}>
+      <h2 style={{ fontSize: '1.25rem', color: t.text, marginBottom: '0.5rem' }}>
         Bitcoin ABM v2
       </h2>
-      <p style={{ fontSize: '0.875rem', color: t.textMuted, lineHeight: 1.6, marginBottom: '1rem' }}>
-        A user-friendly simulation showing Bitcoin network dynamics, directly corresponding to the BERT model structure.
+      <p style={{ fontSize: '0.875rem', color: t.textMuted, lineHeight: 1.6, marginBottom: '1.5rem' }}>
+        A user-friendly simulation showing Bitcoin network dynamics, directly corresponding to the BERT (Bounded Entity Reasoning Toolkit) model structure.
       </p>
 
+      {/* Deep Systems Analysis */}
+      <h3 style={{ fontSize: '1rem', color: t.text, marginBottom: '0.75rem' }}>
+        Deep Systems Analysis (DSA)
+      </h3>
+      <p style={{ fontSize: '0.8125rem', color: t.textMuted, lineHeight: 1.6, marginBottom: '1rem' }}>
+        This simulation integrates three modeling paradigms following the DSA framework:
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <DSACard t={t} layer="Skeleton" desc="Network topology" color="#888" />
+        <DSACard t={t} layer="Flesh" desc="Flows & stocks" color="#50c878" />
+        <DSACard t={t} layer="Nervous System" desc="Agent archetypes" color="#f7931a" />
+      </div>
+
+      {/* Archetypes */}
       {bertStructure && (
         <>
-          <h3 style={{ fontSize: '1rem', color: t.text, marginTop: '1.5rem', marginBottom: '0.75rem' }}>
-            Archetype Legend
+          <h3 style={{ fontSize: '1rem', color: t.text, marginBottom: '0.75rem' }}>
+            Agent Archetypes
           </h3>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
             {Object.entries(bertStructure.archetype_legend).map(([name, config]) => (
               <div key={name} style={{
                 display: 'flex',
@@ -400,8 +488,8 @@ function AboutTab({ t, bertStructure }) {
                 borderRadius: '6px',
               }}>
                 <span style={{
-                  width: '12px',
-                  height: '12px',
+                  width: '10px',
+                  height: '10px',
                   borderRadius: '3px',
                   background: config.color,
                 }} />
@@ -409,28 +497,117 @@ function AboutTab({ t, bertStructure }) {
               </div>
             ))}
           </div>
+        </>
+      )}
 
-          <h3 style={{ fontSize: '1rem', color: t.text, marginTop: '1.5rem', marginBottom: '0.75rem' }}>
-            Model Stats
+      {/* Scenarios */}
+      <h3 style={{ fontSize: '1rem', color: t.text, marginBottom: '0.75rem' }}>
+        Scenario Presets
+      </h3>
+      <div style={{ fontSize: '0.8125rem', color: t.textMuted, lineHeight: 1.6, marginBottom: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+          <ScenarioInfo t={t} name="Baseline" desc="Normal operation" />
+          <ScenarioInfo t={t} name="Fee Spike" desc="Congested mempool" />
+          <ScenarioInfo t={t} name="Halving Event" desc="50% reward drop" />
+          <ScenarioInfo t={t} name="Hash War" desc="Rapid hashrate growth" />
+          <ScenarioInfo t={t} name="Contentious Fork" desc="Governance crisis" />
+          <ScenarioInfo t={t} name="51% Attack" desc="Centralization threat" />
+        </div>
+      </div>
+
+      {/* Model Stats */}
+      {bertStructure && (
+        <>
+          <h3 style={{ fontSize: '1rem', color: t.text, marginBottom: '0.75rem' }}>
+            BERT Model Stats
           </h3>
-          <div style={{ fontSize: '0.875rem', color: t.textMuted }}>
-            <div>Subsystems: {bertStructure.stats.total_subsystems}</div>
-            <div>Internal Flows: {bertStructure.stats.total_flows}</div>
-            <div>Hierarchy Depth: {bertStructure.stats.depth}</div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '0.75rem',
+            marginBottom: '1.5rem',
+          }}>
+            <StatCard t={t} label="Subsystems" value={bertStructure.stats.total_subsystems} />
+            <StatCard t={t} label="Flows" value={bertStructure.stats.total_flows} />
+            <StatCard t={t} label="Depth" value={bertStructure.stats.depth} />
           </div>
         </>
       )}
 
+      {/* Instructions */}
+      <h3 style={{ fontSize: '1rem', color: t.text, marginBottom: '0.75rem' }}>
+        How to Use
+      </h3>
+      <ol style={{ fontSize: '0.8125rem', color: t.textMuted, lineHeight: 1.8, paddingLeft: '1.25rem', marginBottom: '1.5rem' }}>
+        <li>Select a <strong>scenario</strong> from the dropdown in the header</li>
+        <li>Press <strong>▶ Run</strong> to start continuous simulation</li>
+        <li>Watch the <strong>Network</strong> tab for flow animations</li>
+        <li>Explore <strong>Subsystems</strong> for detailed component views</li>
+        <li>Check <strong>Analysis</strong> for time-series charts</li>
+        <li><strong>Export</strong> data as JSON or CSV from the sidebar</li>
+      </ol>
+
+      {/* Footer */}
       <div style={{
-        marginTop: '2rem',
+        marginTop: '1rem',
         padding: '1rem',
         background: t.bgTertiary,
         borderRadius: '8px',
         fontSize: '0.75rem',
         color: t.textDim,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
       }}>
-        Block 9: Scenarios ✓
+        <span>Block 10: Complete ✓</span>
+        <a
+          href="https://github.com/halcyonic/bitcoin-abm-v2"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: t.accent, textDecoration: 'none' }}
+        >
+          View Source →
+        </a>
       </div>
+    </div>
+  )
+}
+
+function DSACard({ t, layer, desc, color }) {
+  return (
+    <div style={{
+      padding: '0.75rem',
+      background: t.bgTertiary,
+      borderRadius: '6px',
+      borderLeft: `3px solid ${color}`,
+    }}>
+      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: t.text, marginBottom: '0.25rem' }}>
+        {layer}
+      </div>
+      <div style={{ fontSize: '0.75rem', color: t.textMuted }}>{desc}</div>
+    </div>
+  )
+}
+
+function ScenarioInfo({ t, name, desc }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
+      <span style={{ color: t.text }}>{name}</span>
+      <span style={{ color: t.textDim }}>{desc}</span>
+    </div>
+  )
+}
+
+function StatCard({ t, label, value }) {
+  return (
+    <div style={{
+      padding: '0.75rem',
+      background: t.bgTertiary,
+      borderRadius: '6px',
+      textAlign: 'center',
+    }}>
+      <div style={{ fontSize: '1.25rem', fontWeight: 600, color: t.accent }}>{value}</div>
+      <div style={{ fontSize: '0.6875rem', color: t.textDim, textTransform: 'uppercase' }}>{label}</div>
     </div>
   )
 }
@@ -515,7 +692,7 @@ export default function App() {
       )}
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar t={t} metrics={metrics} bertStructure={bertStructure} />
+        <Sidebar t={t} metrics={metrics} bertStructure={bertStructure} simState={simState} currentScenario={currentScenario} />
 
         <main style={{
           flex: 1,
