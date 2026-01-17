@@ -2,6 +2,7 @@
  * useSimulation - WebSocket hook for real-time simulation state
  *
  * Block 5: Replaces REST polling with Socket.IO connection
+ * Block 9: Added scenario support
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -26,6 +27,14 @@ export function useSimulation() {
     bips_proposed: 0,
   })
   const [error, setError] = useState(null)
+
+  // Scenario state
+  const [scenarios, setScenarios] = useState([])
+  const [currentScenario, setCurrentScenario] = useState({
+    id: 'baseline',
+    name: 'Baseline',
+    hypothesis: '',
+  })
 
   const socketRef = useRef(null)
   const runningRef = useRef(false)
@@ -79,12 +88,30 @@ export function useSimulation() {
       updateFromState(state)
     })
 
+    socket.on('scenario_changed', (scenario) => {
+      if (scenario) {
+        setCurrentScenario(scenario)
+      }
+    })
+
     socketRef.current = socket
 
     return () => {
       socket.disconnect()
     }
   }, [updateFromState])
+
+  // Fetch available scenarios on mount
+  useEffect(() => {
+    fetch(`${SOCKET_URL}/api/scenarios`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'ok' && data.scenarios) {
+          setScenarios(data.scenarios)
+        }
+      })
+      .catch(err => console.error('Failed to fetch scenarios:', err))
+  }, [])
 
   // Step simulation (single step)
   const step = useCallback(async () => {
@@ -162,6 +189,11 @@ export function useSimulation() {
     }
   }, [])
 
+  // Set scenario (resets simulation with new parameters)
+  const setScenario = useCallback((scenarioId) => {
+    reset({ scenario_id: scenarioId })
+  }, [reset])
+
   // Cleanup interval on unmount
   useEffect(() => {
     return () => {
@@ -189,5 +221,9 @@ export function useSimulation() {
     run,
     stop,
     clearError: () => setError(null),
+    // Scenario support
+    scenarios,
+    currentScenario,
+    setScenario,
   }
 }

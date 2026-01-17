@@ -1,7 +1,7 @@
 """
 Bitcoin ABM v2 - Flask Server
 
-Block 2: Full API contract with simulation endpoints and WebSocket.
+Block 9: Scenario-aware simulation with preset configurations.
 """
 
 from flask import Flask, jsonify, request
@@ -9,6 +9,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from simulation import BitcoinSimulation
 from bert_loader import load_bitcoin_bert
+from scenarios import get_scenario, list_scenarios
 from pathlib import Path
 
 app = Flask(__name__)
@@ -28,12 +29,43 @@ def status():
     """Health check endpoint."""
     return jsonify({
         "status": "ok",
-        "version": "0.2.0",
-        "block": 2,
+        "version": "0.9.0",
+        "block": 9,
         "message": "Bitcoin ABM v2 backend running",
         "simulation": {
             "step": sim.state.step,
-            "running": sim.state.running
+            "running": sim.state.running,
+            "scenario": sim.scenario_id
+        }
+    })
+
+
+@app.route('/api/scenarios', methods=['GET'])
+def scenarios():
+    """
+    Get available scenarios.
+
+    Returns list of scenario presets with descriptions.
+    """
+    return jsonify({
+        "status": "ok",
+        "scenarios": list_scenarios()
+    })
+
+
+@app.route('/api/scenarios/<scenario_id>', methods=['GET'])
+def scenario_details(scenario_id):
+    """
+    Get details for a specific scenario.
+
+    Returns full scenario configuration including parameters and hypothesis.
+    """
+    scenario = get_scenario(scenario_id)
+    return jsonify({
+        "status": "ok",
+        "scenario": {
+            "id": scenario_id,
+            **scenario
         }
     })
 
@@ -45,16 +77,31 @@ def reset():
 
     Body (optional):
         {
-            "hashrate": 100.0,
-            "mempool_size": 0,
-            ...
+            "scenario_id": "baseline",  # Scenario preset to use
+            "params": {...}  # Override specific parameters
         }
     """
-    params = request.get_json() or {}
-    state = sim.reset(params)
+    data = request.get_json(silent=True) or {}
+    scenario_id = data.get("scenario_id", "baseline")
+
+    # Get scenario params and merge with any overrides
+    scenario = get_scenario(scenario_id)
+    params = {**scenario.get("params", {}), **data.get("params", {})}
+
+    state = sim.reset(params=params, scenario_id=scenario_id)
+
+    # Broadcast reset to all WebSocket clients
+    socketio.emit('state_update', state)
+
     return jsonify({
         "status": "ok",
-        "message": "Simulation reset",
+        "message": f"Simulation reset with scenario: {scenario['name']}",
+        "scenario": {
+            "id": scenario_id,
+            "name": scenario["name"],
+            "description": scenario["description"],
+            "hypothesis": scenario["hypothesis"],
+        },
         "state": state
     })
 
@@ -174,10 +221,21 @@ def handle_step(data=None):
 
 @socketio.on('reset')
 def handle_reset(data=None):
-    """Reset simulation via WebSocket."""
-    params = data if isinstance(data, dict) else {}
-    state = sim.reset(params)
+    """Reset simulation via WebSocket with optional scenario."""
+    data = data if isinstance(data, dict) else {}
+    scenario_id = data.get("scenario_id", "baseline")
+
+    # Get scenario params and merge with any overrides
+    scenario = get_scenario(scenario_id)
+    params = {**scenario.get("params", {}), **data.get("params", {})}
+
+    state = sim.reset(params=params, scenario_id=scenario_id)
     emit('state_update', state, broadcast=True)
+    emit('scenario_changed', {
+        "id": scenario_id,
+        "name": scenario["name"],
+        "hypothesis": scenario["hypothesis"],
+    }, broadcast=True)
 
 
 # =============================================================================

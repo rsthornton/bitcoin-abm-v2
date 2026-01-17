@@ -51,7 +51,7 @@ const themes = {
 // Components
 // =============================================================================
 
-function Header({ theme, t, onThemeToggle, simState, onRun, onStop, onStep, onReset }) {
+function Header({ theme, t, onThemeToggle, simState, onRun, onStop, onStep, onReset, scenarios, currentScenario, onScenarioChange }) {
   return (
     <header style={{
       height: '56px',
@@ -80,6 +80,29 @@ function Header({ theme, t, onThemeToggle, simState, onRun, onStop, onStep, onRe
         }}>
           v2
         </span>
+
+        {/* Scenario Selector */}
+        {scenarios.length > 0 && (
+          <select
+            value={currentScenario.id}
+            onChange={(e) => onScenarioChange(e.target.value)}
+            style={{
+              background: t.bgTertiary,
+              border: `1px solid ${t.border}`,
+              borderRadius: '6px',
+              padding: '6px 10px',
+              color: t.text,
+              fontSize: '0.8125rem',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+            title={currentScenario.hypothesis || 'Select a scenario'}
+          >
+            {scenarios.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -406,7 +429,7 @@ function AboutTab({ t, bertStructure }) {
         fontSize: '0.75rem',
         color: t.textDim,
       }}>
-        Block 8: Analysis Tab ✓
+        Block 9: Scenarios ✓
       </div>
     </div>
   )
@@ -432,6 +455,9 @@ export default function App() {
     run: handleRun,
     stop: handleStop,
     clearError,
+    scenarios,
+    currentScenario,
+    setScenario,
   } = useSimulation()
 
   const t = themes[theme]
@@ -466,7 +492,27 @@ export default function App() {
         onStop={handleStop}
         onStep={handleStep}
         onReset={handleReset}
+        scenarios={scenarios}
+        currentScenario={currentScenario}
+        onScenarioChange={setScenario}
       />
+
+      {/* Scenario Hypothesis Bar */}
+      {currentScenario.id !== 'baseline' && currentScenario.hypothesis && (
+        <div style={{
+          background: t.bgTertiary,
+          borderBottom: `1px solid ${t.border}`,
+          padding: '0.5rem 1.5rem',
+          fontSize: '0.75rem',
+          color: t.textMuted,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+        }}>
+          <span style={{ fontWeight: 600, color: t.accent }}>{currentScenario.name}:</span>
+          <span>{currentScenario.hypothesis}</span>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar t={t} metrics={metrics} bertStructure={bertStructure} />

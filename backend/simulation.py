@@ -2,7 +2,7 @@
 Bitcoin ABM v2 - Simulation Model
 
 Block 2: Basic simulation structure with state tracking.
-Block 3 will integrate BERT loader and full Mesa model.
+Block 9: Enhanced with scenario-aware dynamics.
 """
 
 from dataclasses import dataclass, field
@@ -16,7 +16,7 @@ class SimulationState:
     step: int = 0
     running: bool = False
 
-    # Core metrics (will be computed by Mesa model in Block 3)
+    # Core metrics
     block_height: int = 0
     hashrate: float = 100.0  # EH/s
     difficulty: float = 1.0
@@ -28,10 +28,14 @@ class SimulationState:
     transactions_processed: int = 0
     bips_proposed: int = 0
 
+    # Scenario tracking
+    scenario_id: str = "baseline"
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "step": self.step,
             "running": self.running,
+            "scenario_id": self.scenario_id,
             "metrics": {
                 "block_height": self.block_height,
                 "hashrate": self.hashrate,
@@ -51,31 +55,46 @@ class BitcoinSimulation:
     """
     Bitcoin network simulation.
 
-    Block 2: Stub implementation with random walks.
-    Block 3: Full Mesa model with BERT-loaded subsystems.
+    Block 9: Scenario-aware dynamics with configurable parameters.
     """
 
-    def __init__(self, params: Dict[str, Any] = None):
-        self.params = params or {}
-        self.state = SimulationState()
+    # Default parameters (baseline scenario)
+    DEFAULT_PARAMS = {
+        "tx_rate": 5,
+        "base_hashrate": 100.0,
+        "miner_count": 10,
+        "block_reward": 6.25,
+        "difficulty_adjustment_rate": 0.05,
+        "mempool_limit": 100,
+        "fee_sensitivity": 1.0,
+        "hashrate_growth": 0.0,
+        "bip_rate": 1,
+        "consensus_threshold": 0.67,
+        "dominant_miner_share": 0.0,
+    }
+
+    def __init__(self, params: Dict[str, Any] = None, scenario_id: str = "baseline"):
+        self.params = {**self.DEFAULT_PARAMS, **(params or {})}
+        self.scenario_id = scenario_id
+        self.state = SimulationState(scenario_id=scenario_id)
         self.history: List[Dict[str, Any]] = []
+        self._apply_initial_params()
 
-        # Apply initial params
-        if "hashrate" in self.params:
-            self.state.hashrate = self.params["hashrate"]
-        if "mempool_size" in self.params:
-            self.state.mempool_size = self.params["mempool_size"]
+    def _apply_initial_params(self):
+        """Apply initial parameters to state."""
+        self.state.hashrate = self.params.get("base_hashrate", 100.0)
+        self.state.scenario_id = self.scenario_id
 
-    def reset(self, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Reset simulation to initial state."""
-        self.params = params or self.params
-        self.state = SimulationState()
+    def reset(self, params: Dict[str, Any] = None, scenario_id: str = None) -> Dict[str, Any]:
+        """Reset simulation to initial state with optional new parameters."""
+        if scenario_id:
+            self.scenario_id = scenario_id
+        if params:
+            self.params = {**self.DEFAULT_PARAMS, **params}
+
+        self.state = SimulationState(scenario_id=self.scenario_id)
         self.history = []
-
-        if "hashrate" in self.params:
-            self.state.hashrate = self.params["hashrate"]
-        if "mempool_size" in self.params:
-            self.state.mempool_size = self.params["mempool_size"]
+        self._apply_initial_params()
 
         return self.state.to_dict()
 
@@ -83,42 +102,80 @@ class BitcoinSimulation:
         """
         Advance simulation by one step.
 
-        Block 2: Simple random walk placeholder.
-        Block 3: Real Mesa model step with Poisson blocks, difficulty adjustment.
+        Dynamics are driven by scenario parameters.
         """
         self.state.step += 1
+        p = self.params  # Shorthand
 
-        # Simulate transaction arrival (Poisson-ish)
-        new_txs = random.randint(0, 10)
+        # === Transaction Arrival ===
+        # Poisson-distributed based on tx_rate
+        new_txs = int(random.expovariate(1.0 / max(1, p["tx_rate"])))
         self.state.mempool_size += new_txs
         self.state.transactions_processed += new_txs
 
-        # Simulate block mining (roughly 1 block per 10 steps on average)
-        if random.random() < 0.1:
+        # === Block Mining ===
+        # Probability based on hashrate vs difficulty
+        block_prob = 0.1 * (self.state.hashrate / max(1, self.state.difficulty * 100))
+        block_prob = min(0.3, max(0.02, block_prob))  # Clamp between 2% and 30%
+
+        if random.random() < block_prob:
             self.state.block_height += 1
             self.state.blocks_mined += 1
-            # Clear some mempool
-            cleared = min(self.state.mempool_size, random.randint(1000, 3000))
+
+            # Clear mempool based on block capacity
+            block_capacity = random.randint(1500, 2500)
+            cleared = min(self.state.mempool_size, block_capacity)
             self.state.mempool_size = max(0, self.state.mempool_size - cleared)
 
-        # Hashrate drift
-        self.state.hashrate *= (1 + random.uniform(-0.02, 0.03))
-        self.state.hashrate = max(50, min(500, self.state.hashrate))
+        # === Mempool Pressure (scenario-aware) ===
+        if self.state.mempool_size > p["mempool_limit"] * 50:
+            # Congestion: drop some transactions
+            dropped = int(self.state.mempool_size * 0.05)
+            self.state.mempool_size -= dropped
 
-        # Fee market response to mempool
-        if self.state.mempool_size > 5000:
-            self.state.avg_fee *= 1.1
-        elif self.state.mempool_size < 1000:
-            self.state.avg_fee *= 0.95
+        # === Hashrate Dynamics ===
+        # Base drift plus scenario-specific growth
+        drift = random.uniform(-0.01, 0.02)
+        growth = p.get("hashrate_growth", 0.0)
+
+        # Halving effect: miners may leave if reward drops
+        if p["block_reward"] < 6.0:
+            # Reduced reward = some miners exit
+            drift -= 0.01
+
+        # Dominant miner effect (51% attack scenario)
+        if p.get("dominant_miner_share", 0) > 0.4:
+            # Centralization discourages small miners
+            drift -= 0.005
+
+        self.state.hashrate *= (1 + drift + growth)
+        self.state.hashrate = max(30, min(500, self.state.hashrate))
+
+        # === Fee Market ===
+        fee_sensitivity = p.get("fee_sensitivity", 1.0)
+        mempool_pressure = self.state.mempool_size / max(1, p["mempool_limit"] * 20)
+
+        if mempool_pressure > 2.0:
+            self.state.avg_fee *= (1 + 0.1 * fee_sensitivity)
+        elif mempool_pressure > 1.0:
+            self.state.avg_fee *= (1 + 0.03 * fee_sensitivity)
+        elif mempool_pressure < 0.5:
+            self.state.avg_fee *= 0.97
+
         self.state.avg_fee = max(1.0, min(500.0, self.state.avg_fee))
 
-        # Difficulty adjustment every 2016 blocks (simplified)
+        # === Difficulty Adjustment ===
+        # Every 20 blocks (simplified from 2016)
         if self.state.block_height > 0 and self.state.block_height % 20 == 0:
-            # Adjust based on hashrate
-            self.state.difficulty *= (self.state.hashrate / 100.0) ** 0.1
+            adjustment_rate = p.get("difficulty_adjustment_rate", 0.05)
+            target_hashrate = 100.0
+            ratio = self.state.hashrate / target_hashrate
+            self.state.difficulty *= (1 + (ratio - 1) * adjustment_rate)
+            self.state.difficulty = max(0.5, min(10.0, self.state.difficulty))
 
-        # Occasional BIP proposal
-        if random.random() < 0.01:
+        # === BIP Proposals (Governance) ===
+        bip_rate = p.get("bip_rate", 1)
+        if random.random() < 0.01 * bip_rate:
             self.state.bips_proposed += 1
 
         # Record history
