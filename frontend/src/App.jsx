@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSimulation } from './hooks/useSimulation'
 import { SubsystemsTab } from './components/SubsystemsTab'
 import { NetworkTab } from './components/NetworkTab'
+import { AnalysisTab } from './components/AnalysisTab'
 
 /**
  * Bitcoin ABM v2 - Main Application
@@ -314,7 +315,7 @@ function MainContent({ t, activeTab, metrics, bertStructure, simState }) {
         <SubsystemsTab t={t} metrics={metrics} bertStructure={bertStructure} />
       )}
       {activeTab === 'Analysis' && (
-        <PlaceholderTab t={t} title="Analysis" description="Charts and metrics coming in Block 8" />
+        <AnalysisTab t={t} metrics={metrics} simState={simState} />
       )}
       {activeTab === 'About' && (
         <AboutTab t={t} bertStructure={bertStructure} />
@@ -405,7 +406,7 @@ function AboutTab({ t, bertStructure }) {
         fontSize: '0.75rem',
         color: t.textDim,
       }}>
-        Block 7: Network Tab (DSA Integrated) ✓
+        Block 8: Analysis Tab ✓
       </div>
     </div>
   )
