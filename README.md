@@ -45,7 +45,7 @@ See `PLAN.md` for the full block-by-block development plan.
 - [x] Block 3: BERT Loader Update
 - [x] Block 4: Frontend Shell
 - [x] Block 5: WebSocket Connection
-- [ ] Block 6: Subsystems Tab
+- [x] Block 6: Subsystems Tab
 - [ ] Block 7: Network Tab
 - [ ] Block 8: Analysis Tab
 - [ ] Block 9: Scenarios

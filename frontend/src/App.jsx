@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSimulation } from './hooks/useSimulation'
+import { SubsystemsTab } from './components/SubsystemsTab'
 
 /**
  * Bitcoin ABM v2 - Main Application
@@ -309,7 +310,7 @@ function MainContent({ t, activeTab, metrics, bertStructure }) {
         <PlaceholderTab t={t} title="Network View" description="Flow visualization coming in Block 7" />
       )}
       {activeTab === 'Subsystems' && (
-        <PlaceholderTab t={t} title="Subsystems" description="4-panel view coming in Block 6" />
+        <SubsystemsTab t={t} metrics={metrics} bertStructure={bertStructure} />
       )}
       {activeTab === 'Analysis' && (
         <PlaceholderTab t={t} title="Analysis" description="Charts and metrics coming in Block 8" />
@@ -403,7 +404,7 @@ function AboutTab({ t, bertStructure }) {
         fontSize: '0.75rem',
         color: t.textDim,
       }}>
-        Block 5: WebSocket Connection ✓
+        Block 6: Subsystems Tab ✓
       </div>
     </div>
   )
@@ -415,7 +416,7 @@ function AboutTab({ t, bertStructure }) {
 
 export default function App() {
   const [theme, setTheme] = useState('light')
-  const [activeTab, setActiveTab] = useState('About')
+  const [activeTab, setActiveTab] = useState('Subsystems')
   const [bertStructure, setBertStructure] = useState(null)
 
   // WebSocket-powered simulation state
