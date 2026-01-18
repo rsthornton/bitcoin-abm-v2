@@ -381,7 +381,7 @@ export function NetworkTab({ t, metrics, bertStructure, simState }) {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
   const [selectedNode, setSelectedNode] = useState(null)
 
-  // Measure container
+  // Measure container - re-run when bertStructure loads
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
@@ -392,10 +392,14 @@ export function NetworkTab({ t, metrics, bertStructure, simState }) {
       }
     }
 
-    updateSize()
+    // Small delay to ensure DOM has rendered
+    const timer = setTimeout(updateSize, 50)
     window.addEventListener('resize', updateSize)
-    return () => window.removeEventListener('resize', updateSize)
-  }, [])
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', updateSize)
+    }
+  }, [bertStructure])
 
   if (!bertStructure) {
     return (
