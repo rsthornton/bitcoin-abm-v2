@@ -169,13 +169,22 @@ def bert_structure():
 
     Returns subsystem hierarchy, flows, and behavior configurations.
     """
-    # Look for bitcoin.json in project root (one level up from backend/)
-    bert_path = Path(__file__).parent.parent / "bitcoin.json"
+    # Check multiple locations (local dev vs Docker)
+    candidates = [
+        Path(__file__).parent.parent / "bitcoin.json",  # Local: backend/../bitcoin.json
+        Path(__file__).parent / "bitcoin.json",          # Docker: /app/bitcoin.json
+    ]
 
-    if not bert_path.exists():
+    bert_path = None
+    for candidate in candidates:
+        if candidate.exists():
+            bert_path = candidate
+            break
+
+    if not bert_path:
         return jsonify({
             "status": "error",
-            "message": f"bitcoin.json not found at {bert_path}"
+            "message": f"bitcoin.json not found in any of: {[str(c) for c in candidates]}"
         }), 404
 
     try:
