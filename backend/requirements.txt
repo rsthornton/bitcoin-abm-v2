@@ -4,10 +4,15 @@
 flask>=3.0.0
 flask-cors>=4.0.0
 
-# WebSocket support (Block 2+)
+# WebSocket support
 flask-socketio>=5.3.0
+gevent>=24.0.0
+gevent-websocket>=0.10.1
 
-# ABM framework (Block 2+)
+# Production server
+gunicorn>=21.0.0
+
+# ABM framework
 mesa>=3.0.0
 
 # Data handling

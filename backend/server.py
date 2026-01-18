@@ -4,7 +4,8 @@ Bitcoin ABM v2 - Flask Server
 Block 9: Scenario-aware simulation with preset configurations.
 """
 
-from flask import Flask, jsonify, request
+import os
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from simulation import BitcoinSimulation
@@ -12,7 +13,8 @@ from bert_loader import load_bitcoin_bert
 from scenarios import get_scenario, list_scenarios
 from pathlib import Path
 
-app = Flask(__name__)
+# Production: serve React build from static/
+app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -239,8 +241,28 @@ def handle_reset(data=None):
 
 
 # =============================================================================
+# Static File Serving (Production)
+# =============================================================================
+
+@app.route('/')
+def serve_root():
+    """Serve React app root."""
+    return send_from_directory(app.static_folder, 'index.html')
+
+
+@app.errorhandler(404)
+def not_found(e):
+    """Catch-all for client-side routing - serve index.html."""
+    # Only serve index.html for non-API routes
+    if not request.path.startswith('/api/'):
+        return send_from_directory(app.static_folder, 'index.html')
+    return jsonify({"status": "error", "message": "Not found"}), 404
+
+
+# =============================================================================
 # Entry Point
 # =============================================================================
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, debug=False, host='0.0.0.0', port=port)
