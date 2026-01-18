@@ -35,13 +35,23 @@ function MiniChart({ t, data, color, label, unit, height = CHART_HEIGHT }) {
   const [dimensions, setDimensions] = useState({ width: 0, height })
 
   useEffect(() => {
-    if (svgRef.current) {
-      setDimensions({
-        width: svgRef.current.parentElement.offsetWidth,
-        height,
-      })
+    const updateSize = () => {
+      if (svgRef.current?.parentElement) {
+        setDimensions({
+          width: svgRef.current.parentElement.offsetWidth,
+          height,
+        })
+      }
     }
-  }, [height])
+
+    // Measure after render and on resize
+    const timer = setTimeout(updateSize, 50)
+    window.addEventListener('resize', updateSize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', updateSize)
+    }
+  }, [height, data?.length])
 
   if (!data || data.length === 0) {
     return (
@@ -208,7 +218,24 @@ function ChartCard({ t, title, children }) {
 // =============================================================================
 
 function CorrelationChart({ t, data1, data2, label1, label2, color1, color2 }) {
+  const svgRef = useRef(null)
+  const [width, setWidth] = useState(0)
   const height = 150
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (svgRef.current?.parentElement) {
+        setWidth(svgRef.current.parentElement.offsetWidth)
+      }
+    }
+
+    const timer = setTimeout(updateSize, 50)
+    window.addEventListener('resize', updateSize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', updateSize)
+    }
+  }, [data1?.length])
 
   if (!data1 || !data2 || data1.length < 2) {
     return (
@@ -237,13 +264,14 @@ function CorrelationChart({ t, data1, data2, label1, label2, color1, color2 }) {
   const norm2 = normalize(data2)
 
   const padding = { top: 10, right: 10, bottom: 25, left: 10 }
+  const chartWidth = Math.max(width - padding.left - padding.right, 100)
   const chartHeight = height - padding.top - padding.bottom
 
   return (
-    <svg width="100%" height={height}>
+    <svg ref={svgRef} width="100%" height={height}>
       {/* Series 1 */}
       <path
-        d={`M ${norm1.map((v, i) => `${padding.left + (i / (norm1.length - 1)) * 280},${padding.top + chartHeight - v * chartHeight}`).join(' L ')}`}
+        d={`M ${norm1.map((v, i) => `${padding.left + (i / (norm1.length - 1)) * chartWidth},${padding.top + chartHeight - v * chartHeight}`).join(' L ')}`}
         fill="none"
         stroke={color1}
         strokeWidth={2}
@@ -252,7 +280,7 @@ function CorrelationChart({ t, data1, data2, label1, label2, color1, color2 }) {
 
       {/* Series 2 */}
       <path
-        d={`M ${norm2.map((v, i) => `${padding.left + (i / (norm2.length - 1)) * 280},${padding.top + chartHeight - v * chartHeight}`).join(' L ')}`}
+        d={`M ${norm2.map((v, i) => `${padding.left + (i / (norm2.length - 1)) * chartWidth},${padding.top + chartHeight - v * chartHeight}`).join(' L ')}`}
         fill="none"
         stroke={color2}
         strokeWidth={2}
