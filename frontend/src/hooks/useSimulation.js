@@ -8,7 +8,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client'
 
-const SOCKET_URL = 'http://localhost:5000'
+// In production, connect to same origin; in dev, use localhost:5000
+const SOCKET_URL = import.meta.env.PROD ? '' : 'http://localhost:5000'
 
 export function useSimulation() {
   const [connected, setConnected] = useState(false)
